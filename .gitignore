@@ -1,0 +1,42 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.g.dart
+
+# Gradle
+.gradle/
+android/.gradle/
+android/local.properties
+android/GeneratedPluginRegistrant.java
+android/key.properties
+
+# iOS / macOS
+ios/.symlinks/
+ios/Flutter/.last_build_id
+ios/Pods/
+macos/.symlinks/
+macos/Flutter/
+*.xcworkspace/
+*.xcodeproj/
+DerivedData/
+
+# Env / Secrets (絶対にコミットしない！)
+.env
+.env.*
+*.env
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
