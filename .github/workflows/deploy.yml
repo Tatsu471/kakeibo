@@ -26,9 +26,10 @@ jobs:
         run: flutter pub get
 
       # 4. firebase_options.dart を Secrets から復元
-      #    （.gitignoreで除外しているため、GitHub Secretsから注入）
       - name: Restore firebase_options.dart
-        run: echo "${{ secrets.FIREBASE_OPTIONS_DART }}" > lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
+        run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
 
       # 5. 本番ビルド
       - name: Build Flutter Web
