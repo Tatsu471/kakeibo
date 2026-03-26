@@ -6,7 +6,7 @@
 
 ---
 
-## 🗂️ このSTEPで作ったもの・変えたもの
+## 🗂️ このSTEPで作ったもの・変えたもん
 
 ```
 kakeibo/lib/
@@ -16,6 +16,7 @@ kakeibo/lib/
     ├── entry_screen.dart      ← 記録入力画面（スケルトンから本実装へ）
     └── home_screen.dart       ← 固定値→Firestoreリアルタイムデータへ変更
 ```
+
 
 ---
 

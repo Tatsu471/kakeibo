@@ -46,9 +46,9 @@ class HistoryScreen extends StatelessWidget {
                     ),
                   ),
                   Icon(
-                    Icons.history,
+                    Icons.history_rounded,
                     color: colorScheme.onBackground.withOpacity(0.35),
-                    size: 20,
+                    size: 22,
                   ),
                 ],
               ),
@@ -91,9 +91,9 @@ class HistoryScreen extends StatelessWidget {
                           ),
                           child: Center(
                             child: Text(
-                              '織',
+                              'L', // Lilim の L
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.secondary,
                               ),
@@ -103,11 +103,11 @@ class HistoryScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            '過去の記録だね。どう感じる？',
+                            'Lilim：過去の記録だね。どう感じる？',
                             style: TextStyle(
                               fontSize: 14,
-                              color: colorScheme.onBackground.withOpacity(0.7),
-                              fontStyle: FontStyle.italic,
+                              color: colorScheme.onBackground.withOpacity(0.75),
+                              fontWeight: FontWeight.w500,
                               height: 1.5,
                             ),
                           ),
@@ -253,14 +253,26 @@ class _ExpenseListItem extends StatelessWidget {
                   ),
                 ),
                 // 金額
-                Text(
-                  '¥${expense.amount.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: accentColor,
-                    letterSpacing: -0.5,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '¥${expense.amount.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: accentColor,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline_rounded, 
+                        size: 20, color: colorScheme.error.withOpacity(0.5)),
+                      onPressed: () => _confirmDelete(context),
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -268,5 +280,29 @@ class _ExpenseListItem extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('記録の削除'),
+        content: const Text('この記録を削除してもよろしいですか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('削除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ExpenseService().deleteExpense(expense.id!);
+    }
   }
 }

@@ -94,4 +94,9 @@ class ExpenseService {
           return list;
         });
   }
+
+  /// 支出を削除する
+  Future<void> deleteExpense(String id) async {
+    await _expensesRef.doc(id).delete();
+  }
 }

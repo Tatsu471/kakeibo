@@ -305,8 +305,8 @@ class _HelpDialog extends StatelessWidget {
           Text('2. 振り返る', style: TextStyle(fontWeight: FontWeight.bold)),
           Text('ホームのグラフや、履歴ボタンから支出の推移を確認できます。'),
           SizedBox(height: 12),
-          Text('3. 織璃無（オリム）', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('オリムはあなたの家計を静かに見守り、時々声をかけてくれます。'),
+          Text('3. Lilim (りりむ)', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('りりむはあなたの家計を静かに見守り、時々声をかけてくれます。'),
         ],
       ),
       actions: [

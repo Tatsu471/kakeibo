@@ -226,25 +226,41 @@ class MonthlyTrendChart extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // 日ごとの合計を計算
-    final Map<int, double> dailyMap = {};
+    // カテゴリごとの日次合計を計算
+    final Map<int, double> foodMap = {};
+    final Map<int, double> transportMap = {};
+    
     for (var exp in expenses) {
       final day = exp.date.day;
-      dailyMap[day] = (dailyMap[day] ?? 0) + exp.amount;
+      if (exp.category == 'food') {
+        foodMap[day] = (foodMap[day] ?? 0) + exp.amount;
+      } else {
+        transportMap[day] = (transportMap[day] ?? 0) + exp.amount;
+      }
     }
 
     // グラフデータ作成（1日から今日まで）
     final now = DateTime.now();
-    final spots = <FlSpot>[];
+    final foodSpots = <FlSpot>[];
+    final transportSpots = <FlSpot>[];
+    
     for (int i = 1; i <= now.day; i++) {
-      spots.add(FlSpot(i.toDouble(), dailyMap[i] ?? 0));
+      foodSpots.add(FlSpot(i.toDouble(), foodMap[i] ?? 0));
+      transportSpots.add(FlSpot(i.toDouble(), transportMap[i] ?? 0));
     }
 
-    if (spots.isEmpty) return const Center(child: Text('データなし'));
+    if (foodSpots.isEmpty && transportSpots.isEmpty) return const Center(child: Text('データなし'));
 
     return LineChart(
       LineChartData(
-        gridData: const FlGridData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: colorScheme.onBackground.withOpacity(0.05),
+            strokeWidth: 1,
+          ),
+        ),
         titlesData: FlTitlesData(
           leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -252,6 +268,7 @@ class MonthlyTrendChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              reservedSize: 22,
               getTitlesWidget: (value, meta) {
                 if (value % 5 != 0 && value != 1 && value != now.day) {
                   return const SizedBox();
@@ -259,8 +276,9 @@ class MonthlyTrendChart extends StatelessWidget {
                 return Text(
                   '${value.toInt()}',
                   style: TextStyle(
-                    color: colorScheme.onBackground.withOpacity(0.4),
+                    color: colorScheme.onBackground.withOpacity(0.35),
                     fontSize: 10,
+                    fontWeight: FontWeight.bold,
                   ),
                 );
               },
@@ -269,16 +287,30 @@ class MonthlyTrendChart extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         lineBarsData: [
+          // 食費ライン
           LineChartBarData(
-            spots: spots,
+            spots: foodSpots,
             isCurved: true,
-            color: colorScheme.primary,
-            barWidth: 3,
+            color: colorScheme.secondary,
+            barWidth: 3.5,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: colorScheme.primary.withOpacity(0.1),
+              color: colorScheme.secondary.withOpacity(0.08),
+            ),
+          ),
+          // 交通費ライン
+          LineChartBarData(
+            spots: transportSpots,
+            isCurved: true,
+            color: colorScheme.tertiary,
+            barWidth: 3.5,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: colorScheme.tertiary.withOpacity(0.08),
             ),
           ),
         ],
