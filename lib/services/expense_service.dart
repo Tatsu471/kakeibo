@@ -86,9 +86,12 @@ class ExpenseService {
     return _expensesRef
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
         .where('date', isLessThan: Timestamp.fromDate(endOfMonth))
-        .orderBy('date', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Expense.fromDoc(doc)).toList());
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) => Expense.fromDoc(doc)).toList();
+          // 日付降順にソート（新しい順）
+          list.sort((a, b) => b.date.compareTo(a.date));
+          return list;
+        });
   }
 }

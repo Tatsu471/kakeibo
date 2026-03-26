@@ -188,21 +188,20 @@ class _ExpenseListItem extends StatelessWidget {
     final timeLabel = DateFormat('HH:mm').format(expense.date);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isDark
-                  ? colorScheme.surface.withOpacity(0.2)
-                  : Colors.white.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(16),
+                  ? Colors.white.withOpacity(0.04)
+                  : Colors.white.withOpacity(0.45),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withOpacity(isDark ? 0.08 : 0.6),
                 width: 1,
               ),
             ),
@@ -210,20 +209,21 @@ class _ExpenseListItem extends StatelessWidget {
               children: [
                 // カテゴリアイコン
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
-                    child: Text(
-                      isFood ? '🍚' : '🚃',
-                      style: const TextStyle(fontSize: 20),
+                    child: Icon(
+                      isFood ? Icons.restaurant_rounded : Icons.directions_bus_rounded,
+                      color: accentColor,
+                      size: 22,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 // メモ＋日時
                 Expanded(
                   child: Column(
@@ -234,16 +234,18 @@ class _ExpenseListItem extends StatelessWidget {
                             ? (isFood ? '食費' : '交通費')
                             : expense.memo,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onBackground,
+                          letterSpacing: 0.2,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         '$dateLabel  $timeLabel',
                         style: TextStyle(
                           fontSize: 12,
+                          fontWeight: FontWeight.w500,
                           color: colorScheme.onBackground.withOpacity(0.4),
                         ),
                       ),
@@ -254,10 +256,10 @@ class _ExpenseListItem extends StatelessWidget {
                 Text(
                   '¥${expense.amount.toStringAsFixed(0)}',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
                     color: accentColor,
-                    letterSpacing: 1,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ],

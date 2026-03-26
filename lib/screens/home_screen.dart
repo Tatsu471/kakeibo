@@ -1,5 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../services/expense_service.dart';
 import 'entry_screen.dart';
 import 'history_screen.dart';
@@ -164,41 +165,33 @@ class HomeScreen extends StatelessWidget {
                 );
               },
             ),
-            const Spacer(),
-            // 織璃無キャラクタープレースホルダー
-            Center(
+            const SizedBox(height: 16),
+            // 推移グラフ
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Container(
-                width: 180,
                 height: 180,
+                padding: const EdgeInsets.fromLTRB(12, 24, 24, 12),
                 decoration: BoxDecoration(
-                  color: colorScheme.surface.withOpacity(isDark ? 0.2 : 0.5),
-                  shape: BoxShape.circle,
+                  color: isDark
+                      ? colorScheme.surface.withOpacity(0.15)
+                      : Colors.white.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: colorScheme.secondary.withOpacity(0.7),
-                    width: 1.5,
+                    color: Colors.white.withOpacity(isDark ? 0.1 : 0.6),
+                    width: 1,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colorScheme.primary.withOpacity(isDark ? 0.3 : 0.06),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
-                child: Center(
-                  child: Text(
-                    '織璃無\n(画像配置予定)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: colorScheme.onBackground.withOpacity(0.7),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                child: StreamBuilder<List<Expense>>(
+                  stream: expenseService.monthlyExpenses(),
+                  builder: (context, snapshot) {
+                    final expenses = snapshot.data ?? [];
+                    return MonthlyTrendChart(expenses: expenses);
+                  },
                 ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             // 今月の交通費（Firestoreリアルタイム）
             StreamBuilder<double>(
               stream: expenseService.monthlyTransportTotal(),
@@ -214,6 +207,80 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 32),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// 支出推移グラフ（fl_chart）
+// ============================================================
+class MonthlyTrendChart extends StatelessWidget {
+  final List<Expense> expenses;
+
+  const MonthlyTrendChart({super.key, required this.expenses});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // 日ごとの合計を計算
+    final Map<int, double> dailyMap = {};
+    for (var exp in expenses) {
+      final day = exp.date.day;
+      dailyMap[day] = (dailyMap[day] ?? 0) + exp.amount;
+    }
+
+    // グラフデータ作成（1日から今日まで）
+    final now = DateTime.now();
+    final spots = <FlSpot>[];
+    for (int i = 1; i <= now.day; i++) {
+      spots.add(FlSpot(i.toDouble(), dailyMap[i] ?? 0));
+    }
+
+    if (spots.isEmpty) return const Center(child: Text('データなし'));
+
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                if (value % 5 != 0 && value != 1 && value != now.day) {
+                  return const SizedBox();
+                }
+                return Text(
+                  '${value.toInt()}',
+                  style: TextStyle(
+                    color: colorScheme.onBackground.withOpacity(0.4),
+                    fontSize: 10,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: colorScheme.primary,
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: colorScheme.primary.withOpacity(0.1),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -242,64 +309,62 @@ class GlassCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: isDark
-                  ? colorScheme.surface.withOpacity(0.25)
-                  : Colors.white.withOpacity(0.65),
-              borderRadius: BorderRadius.circular(24),
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.white.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: isDark
-                    ? colorScheme.secondary.withOpacity(0.25)
-                    : Colors.white.withOpacity(0.9),
-                width: 1.5,
+                color: Colors.white.withOpacity(isDark ? 0.08 : 0.6),
+                width: 1.2,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: accentColor.withOpacity(0.10),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
             ),
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 4,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: accentColor,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 1.5,
+                        color: colorScheme.onBackground.withOpacity(0.5),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      amount,
+                      style: TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
                         color: colorScheme.onBackground,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  amount,
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    accentColor == colorScheme.secondary 
+                        ? Icons.restaurant_rounded 
+                        : Icons.directions_bus_rounded,
                     color: accentColor,
-                    letterSpacing: 2.0,
+                    size: 26,
                   ),
                 ),
               ],
