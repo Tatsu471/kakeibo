@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../main.dart'; // themeNotifier のためにインポート
 
 /// 設定画面：ユーザー情報表示 + ログアウト
 class SettingsScreen extends StatelessWidget {
@@ -108,12 +109,23 @@ class SettingsScreen extends StatelessWidget {
             _SettingTile(
               icon: Icons.palette_outlined,
               title: 'デザイン設定',
-              onTap: () {},
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => _ThemeSelectionSheet(),
+                );
+              },
             ),
             _SettingTile(
               icon: Icons.help_outline,
               title: 'ヘルプ',
-              onTap: () {},
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => _HelpDialog(),
+                );
+              },
             ),
             _SettingTile(
               icon: Icons.logout,
@@ -197,6 +209,112 @@ class _SettingTile extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         tileColor: colorScheme.surface.withOpacity(0.1),
       ),
+    );
+  }
+}
+
+// ============================================================
+// テーマ選択用のボトムシート
+// ============================================================
+class _ThemeSelectionSheet extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'デザイン設定',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          _ThemeOption(
+            icon: Icons.brightness_auto,
+            label: 'システム設定に従う',
+            mode: ThemeMode.system,
+          ),
+          _ThemeOption(
+            icon: Icons.light_mode_outlined,
+            label: 'ライトモード',
+            mode: ThemeMode.light,
+          ),
+          _ThemeOption(
+            icon: Icons.dark_mode_outlined,
+            label: 'ダークモード',
+            mode: ThemeMode.dark,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final ThemeMode mode;
+
+  const _ThemeOption({required this.icon, required this.label, required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label),
+      trailing: themeNotifier.value == mode ? const Icon(Icons.check, color: Colors.green) : null,
+      onTap: () {
+        themeNotifier.value = mode;
+        Navigator.pop(context);
+      },
+    );
+  }
+}
+
+// ============================================================
+// ヘルプダイアログ
+// ============================================================
+class _HelpDialog extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Row(
+        children: [
+          Icon(Icons.help_outline, color: colorScheme.secondary),
+          const SizedBox(width: 8),
+          const Text('使い方ガイド'),
+        ],
+      ),
+      content: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('1. 記録する', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('下の「＋」ボタンから、食費や交通費をさっと入力できます。'),
+          SizedBox(height: 12),
+          Text('2. 振り返る', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('ホームのグラフや、履歴ボタンから支出の推移を確認できます。'),
+          SizedBox(height: 12),
+          Text('3. 織璃無（オリム）', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('オリムはあなたの家計を静かに見守り、時々声をかけてくれます。'),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('閉じる'),
+        ),
+      ],
     );
   }
 }

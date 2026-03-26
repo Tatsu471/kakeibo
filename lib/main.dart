@@ -7,6 +7,9 @@ import 'firebase_options.dart';
 import 'screens/home_screen.dart' show HomeShell;
 import 'screens/login_screen.dart';
 
+// テーマモードを管理するグローバルなNotifier
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
+
 void main() async {
   // Flutterのエンジン起動を保証してからFirebaseを初期化
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,14 +81,19 @@ class KakeiboApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '織璃無の家計簿',
-      debugShowCheckedModeBanner: false,
-      theme: _lightTheme,
-      darkTheme: _darkTheme,
-      themeMode: ThemeMode.system,
-      // 認証状態を監視して画面を振り分ける
-      home: const AuthGate(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (_, ThemeMode currentMode, __) {
+        return MaterialApp(
+          title: '織璃無の家計簿',
+          debugShowCheckedModeBanner: false,
+          theme: _lightTheme,
+          darkTheme: _darkTheme,
+          themeMode: currentMode,
+          // 認証状態を監視して画面を振り分ける
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }
