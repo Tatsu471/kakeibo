@@ -27,9 +27,10 @@ jobs:
 
       # 4. firebase_options.dart を Secrets から復元
       - name: Restore firebase_options.dart
-        env:
-          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
-        run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
+        run: |
+          cat <<'EOF' > lib/firebase_options.dart
+          ${{ secrets.FIREBASE_OPTIONS_DART }}
+          EOF
 
       # 5. 本番ビルド
       - name: Build Flutter Web
