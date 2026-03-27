@@ -178,9 +178,10 @@ class _EntryScreenState extends State<EntryScreen>
                       ),
                       child: TabBar(
                         controller: _tabController,
+                        indicatorSize: TabBarIndicatorSize.tab,
                         indicator: BoxDecoration(
                           color: colorScheme.primary,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         labelColor: isDark ? colorScheme.onPrimary : Colors.white,
                         unselectedLabelColor: colorScheme.onBackground.withOpacity(0.5),
@@ -260,9 +261,14 @@ class _EntryScreenState extends State<EntryScreen>
 
               // ===== 電卓キーパッド =====
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _Keypad(onKey: _onKeyTap),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 0.85, // スマホで縦長になりすぎないように調整
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: _Keypad(onKey: _onKeyTap),
+                    ),
+                  ),
                 ),
               ),
 
