@@ -17,8 +17,11 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
   int _currentIndex = 0; // 0=Home, 1=History, 2=Settings
+  late AnimationController _expansionController;
+  bool _showExpansion = false;
+  Offset _fabPosition = Offset.zero;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -27,75 +30,156 @@ class _HomeShellState extends State<HomeShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _expansionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  @override
+  void dispose() {
+    _expansionController.dispose();
+    super.dispose();
+  }
+
+  void _handleFabPress(BuildContext context, GlobalKey fabKey) async {
+    // FABの座標を取得
+    final RenderBox renderBox = fabKey.currentContext?.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+    final position = renderBox.localToGlobal(Offset.zero);
+    
+    setState(() {
+      _fabPosition = Offset(position.dx + size.width / 2, position.dy + size.height / 2);
+      _showExpansion = true;
+    });
+
+    await _expansionController.forward();
+    
+    if (mounted) {
+      await Navigator.of(context).push(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 400),
+          pageBuilder: (context, animation, secondaryAnimation) => const EntryScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+      // 戻ってきたらリセット
+      _expansionController.reset();
+      setState(() => _showExpansion = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fabKey = GlobalKey();
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDark
-              ? colorScheme.surface.withOpacity(0.85)
-              : Colors.white.withOpacity(0.95),
-          border: Border(
-            top: BorderSide(
-              color: colorScheme.primary.withOpacity(0.08),
-              width: 1,
+    return Stack(
+      children: [
+        Scaffold(
+          body: IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? colorScheme.surface.withOpacity(0.85)
+                  : Colors.white.withOpacity(0.95),
+              border: Border(
+                top: BorderSide(
+                  color: colorScheme.primary.withOpacity(0.08),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.settings_outlined),
+                      onPressed: () => setState(() => _currentIndex = 2),
+                      color: _currentIndex == 2 ? colorScheme.primary : colorScheme.onBackground.withOpacity(0.4),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.camera_alt_outlined),
+                      onPressed: () {},
+                      color: colorScheme.onBackground.withOpacity(0.4),
+                    ),
+                    // ================= FAB =================
+                    GestureDetector(
+                      onTapDown: (_) => {}, // 沈み込み演出はFab自体で行うか検討
+                      child: FloatingActionButton(
+                        key: fabKey,
+                        elevation: 6,
+                        backgroundColor: colorScheme.primary,
+                        onPressed: () => _handleFabPress(context, fabKey),
+                        child: const Icon(Icons.add, color: Colors.white, size: 32),
+                      ),
+                    ),
+                    // ======================================
+                    IconButton(
+                      icon: const Icon(Icons.bar_chart_outlined),
+                      onPressed: () => setState(() => _currentIndex = 1),
+                      color: _currentIndex == 1 ? colorScheme.primary : colorScheme.onBackground.withOpacity(0.4),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.home_outlined),
+                      onPressed: () => setState(() => _currentIndex = 0),
+                      color: _currentIndex == 0 ? colorScheme.primary : colorScheme.onBackground.withOpacity(0.4),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  onPressed: () => setState(() => _currentIndex = 2),
-                  color: _currentIndex == 2
-                      ? colorScheme.primary
-                      : colorScheme.onBackground.withOpacity(0.4),
+        
+        // 放射状の広がりを表現するオーバーレイ
+        if (_showExpansion)
+          AnimatedBuilder(
+            animation: _expansionController,
+            builder: (context, child) {
+              final screenSize = MediaQuery.of(context).size;
+              final maxRadius = screenSize.longestSide * 1.5;
+              return CustomPaint(
+                painter: _RadialPainter(
+                  center: _fabPosition,
+                  radius: maxRadius * _expansionController.value,
+                  color: colorScheme.primary,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  onPressed: () {},
-                  color: colorScheme.onBackground.withOpacity(0.4),
-                ),
-                FloatingActionButton(
-                  elevation: 6,
-                  backgroundColor: colorScheme.primary,
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const EntryScreen()),
-                    );
-                  },
-                  child: const Icon(Icons.add, color: Colors.white, size: 32),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.bar_chart_outlined),
-                  onPressed: () => setState(() => _currentIndex = 1),
-                  color: _currentIndex == 1
-                      ? colorScheme.primary
-                      : colorScheme.onBackground.withOpacity(0.4),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.home_outlined),
-                  onPressed: () => setState(() => _currentIndex = 0),
-                  color: _currentIndex == 0
-                      ? colorScheme.primary
-                      : colorScheme.onBackground.withOpacity(0.4),
-                ),
-              ],
-            ),
+              );
+            },
           ),
-        ),
-      ),
+      ],
     );
+  }
+}
+
+class _RadialPainter extends CustomPainter {
+  final Offset center;
+  final double radius;
+  final Color color;
+
+  _RadialPainter({required this.center, required this.radius, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RadialPainter oldDelegate) {
+    return oldDelegate.radius != radius;
   }
 }
 
@@ -216,21 +300,57 @@ class HomeScreen extends StatelessWidget {
 // ============================================================
 // 支出推移グラフ（fl_chart）
 // ============================================================
-class MonthlyTrendChart extends StatelessWidget {
+// ============================================================
+// 支出推移グラフ（fl_chart + 描画アニメーション）
+// ============================================================
+class MonthlyTrendChart extends StatefulWidget {
   final List<Expense> expenses;
-
   const MonthlyTrendChart({super.key, required this.expenses});
+
+  @override
+  State<MonthlyTrendChart> createState() => _MonthlyTrendChartState();
+}
+
+class _MonthlyTrendChartState extends State<MonthlyTrendChart> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart);
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(MonthlyTrendChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.expenses.length != oldWidget.expenses.length) {
+      _controller.reset();
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final now = DateTime.now();
 
     // カテゴリごとの日次合計を計算
     final Map<int, double> foodMap = {};
     final Map<int, double> transportMap = {};
     
-    for (var exp in expenses) {
+    for (var exp in widget.expenses) {
       final day = exp.date.day;
       if (exp.category == 'food') {
         foodMap[day] = (foodMap[day] ?? 0) + exp.amount;
@@ -239,8 +359,7 @@ class MonthlyTrendChart extends StatelessWidget {
       }
     }
 
-    // グラフデータ作成（1日から今日まで）
-    final now = DateTime.now();
+    // グラフデータ作成
     final foodSpots = <FlSpot>[];
     final transportSpots = <FlSpot>[];
     
@@ -251,70 +370,63 @@ class MonthlyTrendChart extends StatelessWidget {
 
     if (foodSpots.isEmpty && transportSpots.isEmpty) return const Center(child: Text('データなし'));
 
-    return LineChart(
-      LineChartData(
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: colorScheme.onBackground.withOpacity(0.05),
-            strokeWidth: 1,
-          ),
-        ),
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 22,
-              getTitlesWidget: (value, meta) {
-                if (value % 5 != 0 && value != 1 && value != now.day) {
-                  return const SizedBox();
-                }
-                return Text(
-                  '${value.toInt()}',
-                  style: TextStyle(
-                    color: colorScheme.onBackground.withOpacity(0.35),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        lineBarsData: [
-          // 食費ライン
-          LineChartBarData(
-            spots: foodSpots,
-            isCurved: true,
-            color: colorScheme.secondary,
-            barWidth: 3.5,
-            isStrokeCapRound: true,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        // アニメーション進捗に基づいて描画するスポットを絞り込む
+        final limit = (now.day * _animation.value).ceil();
+        final filteredFood = foodSpots.where((s) => s.x <= limit).toList();
+        final filteredTransport = transportSpots.where((s) => s.x <= limit).toList();
+
+        return LineChart(
+          LineChartData(
+            gridData: FlGridData(
               show: true,
-              color: colorScheme.secondary.withOpacity(0.08),
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (value) => FlLine(
+                color: colorScheme.onBackground.withOpacity(0.05),
+                strokeWidth: 1,
+              ),
             ),
-          ),
-          // 交通費ライン
-          LineChartBarData(
-            spots: transportSpots,
-            isCurved: true,
-            color: colorScheme.tertiary,
-            barWidth: 3.5,
-            isStrokeCapRound: true,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              color: colorScheme.tertiary.withOpacity(0.08),
+            titlesData: FlTitlesData(
+              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 22,
+                  getTitlesWidget: (value, meta) {
+                    if (value % 5 != 0 && value != 1 && value != now.day) return const SizedBox();
+                    return Text('${value.toInt()}', style: TextStyle(color: colorScheme.onBackground.withOpacity(0.35), fontSize: 10, fontWeight: FontWeight.bold));
+                  },
+                ),
+              ),
             ),
+            borderData: FlBorderData(show: false),
+            lineBarsData: [
+              LineChartBarData(
+                spots: filteredFood,
+                isCurved: true,
+                color: colorScheme.secondary,
+                barWidth: 3.5,
+                isStrokeCapRound: true,
+                dotData: const FlDotData(show: false),
+                belowBarData: BarAreaData(show: true, color: colorScheme.secondary.withOpacity(0.08)),
+              ),
+              LineChartBarData(
+                spots: filteredTransport,
+                isCurved: true,
+                color: colorScheme.tertiary,
+                barWidth: 3.5,
+                isStrokeCapRound: true,
+                dotData: const FlDotData(show: false),
+                belowBarData: BarAreaData(show: true, color: colorScheme.tertiary.withOpacity(0.08)),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

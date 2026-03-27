@@ -3,9 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/expense_service.dart';
 
-/// 振り返り画面：当月の支出を日付降順でリスト表示 + 織璃無の固定テキスト
-class HistoryScreen extends StatelessWidget {
+/// 振り返り画面：カテゴリフィルタ + 日付別アコーディオン表示
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  String _selectedCategory = 'all'; // all, food, transport
 
   @override
   Widget build(BuildContext context) {
@@ -54,72 +61,32 @@ class HistoryScreen extends StatelessWidget {
               ),
             ),
 
-            // ===== 織璃無の固定テキスト（吹き出し風）=====
+            // ===== カテゴリフィルタ（チップ形式）=====
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 14, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? colorScheme.surface.withOpacity(0.2)
-                          : Colors.white.withOpacity(0.55),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colorScheme.secondary.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        // 織璃無アイコン（円形プレースホルダー）
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colorScheme.secondary.withOpacity(0.15),
-                            border: Border.all(
-                              color: colorScheme.secondary.withOpacity(0.5),
-                              width: 1,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'L', // Lilim の L
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.secondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Lilim：過去の記録だね。どう感じる？',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: colorScheme.onBackground.withOpacity(0.75),
-                              fontWeight: FontWeight.w500,
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _FilterChip(
+                    label: 'すべて',
+                    isSelected: _selectedCategory == 'all',
+                    onTap: () => setState(() => _selectedCategory = 'all'),
                   ),
-                ),
+                  _FilterChip(
+                    label: '食費',
+                    isSelected: _selectedCategory == 'food',
+                    onTap: () => setState(() => _selectedCategory = 'food'),
+                  ),
+                  _FilterChip(
+                    label: '交通費',
+                    isSelected: _selectedCategory == 'transport',
+                    onTap: () => setState(() => _selectedCategory = 'transport'),
+                  ),
+                ],
               ),
             ),
 
-            // ===== 支出リスト（Firestoreリアルタイム）=====
+            // ===== 支出リスト（Firestoreリアルタイム＋グループ化）=====
             Expanded(
               child: StreamBuilder<List<Expense>>(
                 stream: expenseService.monthlyExpenses(),
@@ -128,38 +95,42 @@ class HistoryScreen extends StatelessWidget {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final expenses = snapshot.data ?? [];
+                  final allExpenses = snapshot.data ?? [];
+                  // フィルタリング
+                  final expenses = _selectedCategory == 'all'
+                      ? allExpenses
+                      : allExpenses.where((e) => e.category == _selectedCategory).toList();
 
                   if (expenses.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 56,
-                            color: colorScheme.onBackground.withOpacity(0.2),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'まだ記録がありません',
-                            style: TextStyle(
-                              color: colorScheme.onBackground.withOpacity(0.35),
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                    return _EmptyState(isDark: isDark);
                   }
 
+                  // 日付ごとにグループ化
+                  final Map<String, List<Expense>> grouped = {};
+                  for (var e in expenses) {
+                    final dateKey = DateFormat('yyyy-MM-dd').format(e.date);
+                    if (grouped[dateKey] == null) grouped[dateKey] = [];
+                    grouped[dateKey]!.add(e);
+                  }
+
+                  final dateKeys = grouped.keys.toList();
+                  final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
                   return ListView.builder(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    itemCount: expenses.length,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: dateKeys.length,
                     itemBuilder: (context, index) {
-                      final expense = expenses[index];
-                      return _ExpenseListItem(expense: expense, isDark: isDark);
+                      final dateKey = dateKeys[index];
+                      final dayExpenses = grouped[dateKey]!;
+                      final isToday = dateKey == todayStr;
+
+                      return _DateAccordion(
+                        dateLabel: DateFormat('M/d (E)', 'ja').format(dayExpenses.first.date),
+                        expenses: dayExpenses,
+                        initiallyExpanded: isToday,
+                        isDark: isDark,
+                        index: index,
+                      );
                     },
                   );
                 },
@@ -168,6 +139,95 @@ class HistoryScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ===== フィルタリング用チップ =====
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: ChoiceChip(
+        label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        selected: isSelected,
+        onSelected: (_) => onTap(),
+        selectedColor: colorScheme.primary.withOpacity(0.8),
+        labelStyle: TextStyle(color: isSelected ? Colors.white : colorScheme.onBackground.withOpacity(0.6)),
+        backgroundColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? Colors.transparent : colorScheme.onBackground.withOpacity(0.1))),
+        showCheckmark: false,
+      ),
+    );
+  }
+}
+
+// ===== 日付別アコーディオン =====
+class _DateAccordion extends StatelessWidget {
+  final String dateLabel;
+  final List<Expense> expenses;
+  final bool initiallyExpanded;
+  final bool isDark;
+  final int index;
+
+  const _DateAccordion({
+    required this.dateLabel,
+    required this.expenses,
+    required this.initiallyExpanded,
+    required this.isDark,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final total = expenses.fold<double>(0, (sum, e) => sum + e.amount);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.03) : Colors.white.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(isDark ? 0.05 : 0.4), width: 1),
+                    ),
+                    child: Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        initiallyExpanded: initiallyExpanded,
+                        title: Text(dateLabel, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        trailing: Text('¥${total.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: colorScheme.primary)),
+                        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                        children: expenses.map((e) => _ExpenseListItem(expense: e, isDark: isDark)).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -184,99 +244,40 @@ class _ExpenseListItem extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isFood = expense.category == 'food';
     final accentColor = isFood ? colorScheme.secondary : colorScheme.tertiary;
-    final dateLabel = DateFormat('M/d (E)', 'ja').format(expense.date);
     final timeLabel = DateFormat('HH:mm').format(expense.date);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withOpacity(0.04)
-                  : Colors.white.withOpacity(0.45),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withOpacity(isDark ? 0.08 : 0.6),
-                width: 1,
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(isFood ? Icons.restaurant_rounded : Icons.directions_bus_rounded, color: accentColor, size: 18),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    expense.memo.isEmpty ? (isFood ? '食費' : '交通費') : expense.memo,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  Text(timeLabel, style: TextStyle(fontSize: 11, color: colorScheme.onBackground.withOpacity(0.4))),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                // カテゴリアイコン
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      isFood ? Icons.restaurant_rounded : Icons.directions_bus_rounded,
-                      color: accentColor,
-                      size: 22,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // メモ＋日時
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        expense.memo.isEmpty
-                            ? (isFood ? '食費' : '交通費')
-                            : expense.memo,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onBackground,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$dateLabel  $timeLabel',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: colorScheme.onBackground.withOpacity(0.4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // 金額
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '¥${expense.amount.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: accentColor,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline_rounded, 
-                        size: 20, color: colorScheme.error.withOpacity(0.5)),
-                      onPressed: () => _confirmDelete(context),
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-              ],
+            Text('¥${expense.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: accentColor)),
+            IconButton(
+              icon: Icon(Icons.delete_outline_rounded, size: 18, color: colorScheme.error.withOpacity(0.4)),
+              onPressed: () => _confirmDelete(context),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -289,20 +290,32 @@ class _ExpenseListItem extends StatelessWidget {
         title: const Text('記録の削除'),
         content: const Text('この記録を削除してもよろしいですか？'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('削除', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('削除', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
+    if (confirmed == true) await ExpenseService().deleteExpense(expense.id!);
+  }
+}
 
-    if (confirmed == true) {
-      await ExpenseService().deleteExpense(expense.id!);
-    }
+// ===== 空状態の表示 =====
+class _EmptyState extends StatelessWidget {
+  final bool isDark;
+  const _EmptyState({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox_outlined, size: 56, color: colorScheme.onBackground.withOpacity(0.1)),
+          const SizedBox(height: 12),
+          Text('記録がありません', style: TextStyle(color: colorScheme.onBackground.withOpacity(0.3))),
+        ],
+      ),
+    );
   }
 }

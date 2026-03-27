@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/expense_service.dart';
 
@@ -217,14 +217,36 @@ class _EntryScreenState extends State<EntryScreen>
                           width: 1.5,
                         ),
                       ),
-                      child: Text(
-                        '¥ $_displayValue',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 44,
-                          fontWeight: FontWeight.w900,
-                          color: colorScheme.secondary,
-                          letterSpacing: 2,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        transitionBuilder: (Widget child, Animation<double> animation) {
+                          final offsetAnimation = Tween<Offset>(
+                            begin: const Offset(0, 0.3),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutBack,
+                          ));
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Text(
+                          '¥ $_displayValue',
+                          key: ValueKey<String>(_displayValue), // 変更を検知するために必要
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 44,
+                            fontWeight: FontWeight.w900,
+                            color: colorScheme.secondary,
+                            letterSpacing: 2,
+                            // 数字部分のフォント比較（適宜メインに合わせる）
+                            fontFamily: GoogleFonts.outfit().fontFamily,
+                          ),
                         ),
                       ),
                     ),
@@ -323,63 +345,111 @@ class _Keypad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Column(
       children: _keys.map((row) {
         return Expanded(
           child: Row(
             children: row.map((key) {
-              final isSpecial = key == 'C' || key == '⌫';
               return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => onKey(key),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: isSpecial
-                                  ? colorScheme.secondary.withOpacity(
-                                      isDark ? 0.25 : 0.15)
-                                  : isDark
-                                      ? colorScheme.surface.withOpacity(0.25)
-                                      : Colors.white.withOpacity(0.6),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.4),
-                                width: 1,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              key,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: isSpecial
-                                    ? colorScheme.secondary
-                                    : colorScheme.onBackground,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                child: _KeypadButton(
+                  label: key,
+                  onTap: () => onKey(key),
                 ),
               );
             }).toList(),
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// ===== アニメーション付き電卓ボタン =====
+class _KeypadButton extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _KeypadButton({required this.label, required this.onTap});
+
+  @override
+  State<_KeypadButton> createState() => _KeypadButtonState();
+}
+
+class _KeypadButtonState extends State<_KeypadButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSpecial = widget.label == 'C' || widget.label == '⌫';
+
+    // 期間限定：フォント比較用のロジック
+    // 1~4 は Outfit, その他は Space Mono
+    final intValue = int.tryParse(widget.label);
+    final TextStyle labelStyle = (intValue != null && intValue >= 1 && intValue <= 4)
+        ? GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 26)
+        : GoogleFonts.spaceMono(fontWeight: FontWeight.bold, fontSize: 24);
+
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSpecial
+                      ? colorScheme.secondary.withOpacity(isDark ? 0.25 : 0.15)
+                      : isDark
+                          ? colorScheme.surface.withOpacity(0.25)
+                          : Colors.white.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.4),
+                    width: 1,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  widget.label,
+                  style: labelStyle.copyWith(
+                    color: isSpecial ? colorScheme.secondary : colorScheme.onBackground,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
