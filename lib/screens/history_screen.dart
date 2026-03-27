@@ -165,6 +165,8 @@ class _FilterChip extends StatelessWidget {
         backgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? Colors.transparent : colorScheme.onBackground.withOpacity(0.1))),
         showCheckmark: false,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
       ),
     );
   }
@@ -271,6 +273,7 @@ class _ExpenseListItem extends StatelessWidget {
               ),
             ),
             Text('¥${expense.amount.toStringAsFixed(0)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: accentColor)),
+            const SizedBox(width: 12),
             IconButton(
               icon: Icon(Icons.delete_outline_rounded, size: 18, color: colorScheme.error.withOpacity(0.4)),
               onPressed: () => _confirmDelete(context),

@@ -17,9 +17,10 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
+class _HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
   int _currentIndex = 0; // 0=Home, 1=History, 2=Settings
   late AnimationController _expansionController;
+  late AnimationController _sinkController;
   bool _showExpansion = false;
   Offset _fabPosition = Offset.zero;
 
@@ -34,18 +35,30 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     super.initState();
     _expansionController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
+    );
+    _sinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+      lowerBound: 0.85,
+      upperBound: 1.0,
+      value: 1.0,
     );
   }
 
   @override
   void dispose() {
     _expansionController.dispose();
+    _sinkController.dispose();
     super.dispose();
   }
 
   void _handleFabPress(BuildContext context, GlobalKey fabKey) async {
-    // FABの座標を取得
+    // 1. 沈み込み演出
+    await _sinkController.animateTo(0.85, curve: Curves.easeOutCubic);
+    await Future.delayed(const Duration(milliseconds: 80)); // 溜め
+
+    // 2. 座標取得
     final RenderBox renderBox = fabKey.currentContext?.findRenderObject() as RenderBox;
     final size = renderBox.size;
     final position = renderBox.localToGlobal(Offset.zero);
@@ -55,7 +68,9 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
       _showExpansion = true;
     });
 
-    await _expansionController.forward();
+    // 3. 放射状拡大（ユーザー指定の緩急イメージに近いCubicカーブを適用）
+    await _expansionController.forward(from: 0);
+    _sinkController.animateTo(1.0, curve: Curves.elasticOut); // 元に戻す
     
     if (mounted) {
       await Navigator.of(context).push(
@@ -115,8 +130,8 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
                       color: colorScheme.onBackground.withOpacity(0.4),
                     ),
                     // ================= FAB =================
-                    GestureDetector(
-                      onTapDown: (_) => {}, // 沈み込み演出はFab自体で行うか検討
+                    ScaleTransition(
+                      scale: _sinkController,
                       child: FloatingActionButton(
                         key: fabKey,
                         elevation: 6,
@@ -153,7 +168,8 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
               return CustomPaint(
                 painter: _RadialPainter(
                   center: _fabPosition,
-                  radius: maxRadius * _expansionController.value,
+                  // 緩急を制御する Cubic カーブを適用
+                  radius: maxRadius * const Cubic(0.54, -0.02, 0.56, 1.09).transform(_expansionController.value),
                   color: colorScheme.primary,
                 ),
               );
