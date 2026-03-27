@@ -20,7 +20,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final expenseService = ExpenseService();
     final now = DateTime.now();
-    final monthLabel = '${now.year}年${now.month}月の記録';
+    final monthLabel = '${now.year}年${now.month}月 | SakuToko';
 
     return Container(
       decoration: BoxDecoration(

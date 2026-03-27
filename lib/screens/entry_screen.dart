@@ -144,7 +144,7 @@ class _EntryScreenState extends State<EntryScreen>
                     ),
                     Expanded(
                       child: Text(
-                        '支出を記録',
+                        'SakuToko | 記録',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 18,

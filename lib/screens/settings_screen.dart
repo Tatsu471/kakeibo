@@ -292,21 +292,21 @@ class _HelpDialog extends StatelessWidget {
         children: [
           Icon(Icons.help_outline, color: colorScheme.secondary),
           const SizedBox(width: 8),
-          const Text('使い方ガイド'),
+          const Text('SakuToko の使い方'),
         ],
       ),
       content: const Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('1. 記録する', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('下の「＋」ボタンから、食費や交通費をさっと入力できます。'),
+          Text('1. 割く（記録する）', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('下の「＋」ボタンから、食費や交通費をサクッと入力。金額は正確に、感情は横に置いて記録しましょう。'),
           SizedBox(height: 12),
-          Text('2. 振り返る', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('ホームのグラフや、履歴ボタンから支出の推移を確認できます。'),
+          Text('2. 咲く（振り返る）', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('浮いた食費が、豊かな移動体験として花開く。推移グラフで資金の循環を確認しましょう。'),
           SizedBox(height: 12),
-          Text('3. Lilim (りりむ)', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('りりむはあなたの家計を静かに見守り、時々声をかけてくれます。'),
+          Text('3. トコトコ (Lilim)', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('りりむはあなたの歩みを静かに見守り、トコトコと伴走してくれます。'),
         ],
       ),
       actions: [

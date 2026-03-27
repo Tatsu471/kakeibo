@@ -212,27 +212,38 @@ class HomeScreen extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // ヘッダー（月表示）
+            // ヘッダー（ロゴ + 月表示）
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    monthLabel,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onBackground,
-                      letterSpacing: 1.2,
-                    ),
+                  Image.asset(
+                    isDark ? 'assets/logo/logo_white_transparent.png' : 'assets/logo/logo_black_transparent.png',
+                    height: 32,
+                    fit: BoxFit.contain,
                   ),
-                  Text(
-                    '支出サマリー',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colorScheme.onBackground.withOpacity(0.45),
-                    ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        monthLabel,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onBackground,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      Text(
+                        '支出サマリー',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onBackground.withOpacity(0.45),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
