@@ -36,6 +36,28 @@ class Expense {
   }
 }
 
+/// 月別サマリのモデルクラス
+class MonthlySummary {
+  final String dateKey; // YYYY-MM
+  final double foodTotal;
+  final double transportTotal;
+
+  MonthlySummary({
+    required this.dateKey,
+    required this.foodTotal,
+    required this.transportTotal,
+  });
+
+  factory MonthlySummary.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return MonthlySummary(
+      dateKey: doc.id,
+      foodTotal: (data['foodTotal'] as num?)?.toDouble() ?? 0.0,
+      transportTotal: (data['transportTotal'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
 /// Firestore の支出データを操作するサービスクラス
 class ExpenseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -47,9 +69,30 @@ class ExpenseService {
     return _db.collection('users').doc(uid).collection('expenses');
   }
 
+  /// 現在のユーザーのmonthly_summariesコレクション参照
+  CollectionReference<Map<String, dynamic>> get _summariesRef {
+    final uid = _auth.currentUser!.uid;
+    return _db.collection('users').doc(uid).collection('monthly_summaries');
+  }
+
   /// 支出を追加する
   Future<void> addExpense(Expense expense) async {
-    await _expensesRef.add(expense.toMap());
+    final batch = _db.batch();
+    
+    // 1. expensesへの追加
+    final newDocRef = _expensesRef.doc();
+    batch.set(newDocRef, expense.toMap());
+
+    // 2. monthly_summariesの更新
+    final dateKey = '${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}';
+    final summaryRef = _summariesRef.doc(dateKey);
+    
+    batch.set(summaryRef, {
+      if (expense.category == 'food') 'foodTotal': FieldValue.increment(expense.amount),
+      if (expense.category == 'transport') 'transportTotal': FieldValue.increment(expense.amount),
+    }, SetOptions(merge: true));
+
+    await batch.commit();
   }
 
   /// 当月の食費合計をリアルタイム取得するStream
@@ -97,6 +140,29 @@ class ExpenseService {
 
   /// 支出を削除する
   Future<void> deleteExpense(String id) async {
-    await _expensesRef.doc(id).delete();
+    final doc = await _expensesRef.doc(id).get();
+    if (!doc.exists) return;
+
+    final expense = Expense.fromDoc(doc);
+    final batch = _db.batch();
+
+    batch.delete(_expensesRef.doc(id));
+
+    final dateKey = '${expense.date.year}-${expense.date.month.toString().padLeft(2, '0')}';
+    final summaryRef = _summariesRef.doc(dateKey);
+    
+    batch.set(summaryRef, {
+      if (expense.category == 'food') 'foodTotal': FieldValue.increment(-expense.amount),
+      if (expense.category == 'transport') 'transportTotal': FieldValue.increment(-expense.amount),
+    }, SetOptions(merge: true));
+
+    await batch.commit();
+  }
+
+  /// 過去の月別サマリーを取得するStream
+  Stream<List<MonthlySummary>> getMonthlySummaries() {
+    return _summariesRef.orderBy(FieldPath.documentId, descending: true).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => MonthlySummary.fromDoc(doc)).toList();
+    });
   }
 }

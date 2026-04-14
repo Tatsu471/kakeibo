@@ -126,7 +126,36 @@ class _HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
                     ),
                     IconButton(
                       icon: const Icon(Icons.camera_alt_outlined),
-                      onPressed: () {},
+                      onPressed: () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: const Text('レシート読み取り (Beta)'),
+                            content: const Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 16),
+                                Text('AIでレシートを解析しています...\n（※現在はモック動作です）'),
+                              ],
+                            ),
+                          ),
+                        );
+                        await Future.delayed(const Duration(seconds: 2));
+                        if (!context.mounted) return;
+                        Navigator.pop(context); // Close dialog
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('解析結果：認識できませんでした。手入力へ進みます。'),
+                            backgroundColor: colorScheme.error,
+                          ),
+                        );
+                        // EntryScreenへの遷移は+ボタン（手動）と同じ
+                        _handleFabPress(context, fabKey);
+                      },
                       color: colorScheme.onBackground.withOpacity(0.4),
                     ),
                     // ================= FAB =================

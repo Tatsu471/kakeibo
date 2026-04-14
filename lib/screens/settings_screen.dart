@@ -127,6 +127,56 @@ class SettingsScreen extends StatelessWidget {
                 );
               },
             ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Divider(),
+            ),
+            _SettingSwitch(
+              icon: Icons.auto_delete_outlined,
+              title: '過去データの自動削除',
+              subtitle: '翌月以降の内訳データを自動で軽くします',
+              value: false, // UI only for now
+              onChanged: (bool val) {
+                // TODO: 今後のアップデートで自動削除のロジックと連携
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('自動削除は今後のアップデートで利用可能になります')),
+                );
+              },
+            ),
+            _SettingTile(
+              icon: Icons.delete_sweep_outlined,
+              title: '過去の詳細データを削除',
+              titleColor: Colors.orange,
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('データの削除'),
+                    content: const Text('当月「以外」の過去の詳細データをすべて削除します（合計金額の推移は残ります）。よろしいですか？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('キャンセル'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('削除する', style: TextStyle(color: Colors.orange)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  // TODO: Firebase Functions等で当月以前のexpensesを一括削除する機能を追加
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('手動削除をリクエストしました（機能実装中）')),
+                  );
+                }
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Divider(),
+            ),
             _SettingTile(
               icon: Icons.logout,
               title: 'ログアウト',
@@ -208,6 +258,54 @@ class _SettingTile extends StatelessWidget {
         trailing: Icon(Icons.chevron_right, size: 20, color: colorScheme.onBackground.withOpacity(0.2)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         tileColor: colorScheme.surface.withOpacity(0.1),
+      ),
+    );
+  }
+}
+
+class _SettingSwitch extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SettingSwitch({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      child: SwitchListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        secondary: Icon(icon, color: colorScheme.primary),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: colorScheme.onBackground,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: colorScheme.onBackground.withOpacity(0.5),
+          ),
+        ),
+        value: value,
+        onChanged: onChanged,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        tileColor: colorScheme.surface.withOpacity(0.1),
+        activeColor: colorScheme.primary,
       ),
     );
   }

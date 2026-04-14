@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/expense_service.dart';
+import 'archive_screen.dart';
 
 /// 振り返り画面：カテゴリフィルタ + 日付別アコーディオン表示
 class HistoryScreen extends StatefulWidget {
@@ -52,10 +53,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       letterSpacing: 1.1,
                     ),
                   ),
-                  Icon(
-                    Icons.history_rounded,
-                    color: colorScheme.onBackground.withOpacity(0.35),
-                    size: 22,
+                  IconButton(
+                    icon: Icon(
+                      Icons.history_rounded,
+                      color: colorScheme.onBackground.withOpacity(0.35),
+                      size: 26,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ArchiveScreen()),
+                      );
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
@@ -64,8 +75,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
             // ===== カテゴリフィルタ（チップ形式）=====
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _FilterChip(
                     label: 'すべて',

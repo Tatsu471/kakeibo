@@ -78,6 +78,7 @@ class _EntryScreenState extends State<EntryScreen>
     setState(() => _isSaving = true);
     try {
       final category = _tabController.index == 0 ? 'food' : 'transport';
+      final colorScheme = Theme.of(context).colorScheme;
       await _expenseService.addExpense(Expense(
         amount: amount,
         category: category,
@@ -91,7 +92,9 @@ class _EntryScreenState extends State<EntryScreen>
             content: Text(
               '${category == 'food' ? '食費' : '交通費'} ¥${amount.toStringAsFixed(0)} を記録しました！',
             ),
-            backgroundColor: const Color(0xFF2E8F7D),
+            backgroundColor: category == 'food' 
+                ? colorScheme.secondary 
+                : colorScheme.tertiary,
             behavior: SnackBarBehavior.floating,
           ),
         );
