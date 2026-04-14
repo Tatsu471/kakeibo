@@ -1,9 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ユーザー自身のexpensesコレクションのみRead/Write可能
-    // 他人のデータには絶対アクセスできない
-    match /users/{userId}/expenses/{expenseId} {
+    // ユーザー(userId)配下のデータ（expenses, monthly_summaries等）は
+    // 本人(uid)しか絶対にRead/Writeできない堅牢なマルチユーザー構成
+    match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }

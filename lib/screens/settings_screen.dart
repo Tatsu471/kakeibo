@@ -127,6 +127,16 @@ class SettingsScreen extends StatelessWidget {
                 );
               },
             ),
+            _SettingTile(
+              icon: Icons.menu_book_outlined,
+              title: 'SakuTokoの思想（タツミの発信）',
+              onTap: () {
+                // TODO: ここにタツミさんのブログや対話サービス、SNS等のURLを設定
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('タツミの発信サイトへ移動します（準備中）')),
+                );
+              },
+            ),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Divider(),
@@ -180,7 +190,7 @@ class SettingsScreen extends StatelessWidget {
             _SettingTile(
               icon: Icons.logout,
               title: 'ログアウト',
-              titleColor: Colors.redAccent,
+              titleColor: Colors.blueGrey,
               onTap: () async {
                 final confirm = await showDialog<bool>(
                   context: context,
@@ -194,7 +204,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: const Text('ログアウト', style: TextStyle(color: Colors.redAccent)),
+                        child: const Text('ログアウト', style: TextStyle(color: Colors.blueGrey)),
                       ),
                     ],
                   ),
@@ -205,13 +215,84 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
 
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Divider(),
+            ),
+
+            _SettingTile(
+              icon: Icons.file_download_outlined,
+              title: 'データをCSVで出力',
+              onTap: () async {
+                final csvData = await ExpenseService().exportDataAsCSV();
+                // ※ Web版での実録ダウンロード処理（デモ表示）
+                if (context.mounted) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('CSVデータの出力'),
+                      content: const SingleChildScrollView(
+                        child: Text('データのエクスポート準備が完了しました。本来はここでファイルがダウンロードされます。'),
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('閉じる')),
+                        TextButton(
+                          onPressed: () {
+                            print(csvData); // コンソール出力
+                            Navigator.pop(context);
+                          },
+                          child: const Text('内容をコンソールに出力'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+            ),
+
+            _SettingTile(
+              icon: Icons.person_off_outlined,
+              title: '退会して全データを削除',
+              titleColor: Colors.redAccent,
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('アカウントの削除'),
+                    content: const Text('すべての記録（支出・集計）を完全に消去し、アカウントを削除します。この操作は取り消せません。本当によろしいですか？'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('退会する', style: TextStyle(color: Colors.redAccent)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  try {
+                    // 1. Firestoreデータを先に削除
+                    await ExpenseService().deleteAllUserData();
+                    // 2. Authアカウントを削除（自動的にログアウトされる）
+                    await authService.deleteAccount();
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('退会処理中にエラーが発生しました: $e')),
+                      );
+                    }
+                  }
+                }
+              },
+            ),
+
             const Spacer(),
             
             // バージョン情報
             Padding(
               padding: const EdgeInsets.only(bottom: 24),
               child: Text(
-                'Version 1.0.0 (MVP)',
+                'Version 1.2.0 (Phase 7)',
                 style: TextStyle(
                   fontSize: 12,
                   color: colorScheme.onBackground.withOpacity(0.3),

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../services/expense_service.dart';
 
 class ArchiveScreen extends StatelessWidget {
@@ -78,11 +79,21 @@ class ArchiveScreen extends StatelessWidget {
                       );
                     }
 
+                    // 直近6ヶ月分をグラフ用に抽出（日付昇順）
+                    final chartData = summaries.reversed.toList();
+                    if (chartData.length > 6) {
+                      chartData.removeRange(0, chartData.length - 6);
+                    }
+
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: summaries.length,
+                      itemCount: summaries.length + 1, // グラフの分 +1
                       itemBuilder: (context, index) {
-                        final summary = summaries[index];
+                        if (index == 0) {
+                          return _MonthlyTrendChart(data: chartData, isDark: isDark);
+                        }
+                        
+                        final summary = summaries[index - 1];
                         final parts = summary.dateKey.split('-');
                         final displayMonth = '${parts[0]}年${int.parse(parts[1])}月';
 
@@ -102,6 +113,84 @@ class ArchiveScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _MonthlyTrendChart extends StatelessWidget {
+  final List<MonthlySummary> data;
+  final bool isDark;
+
+  const _MonthlyTrendChart({required this.data, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      height: 220,
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.white.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: _calculateMaxY(),
+          barTouchData: BarTouchData(enabled: false),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index >= 0 && index < data.length) {
+                    final month = data[index].dateKey.split('-')[1];
+                    return Text('${int.parse(month)}月', 
+                      style: TextStyle(fontSize: 10, color: colorScheme.onBackground.withOpacity(0.5)));
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          barGroups: data.asMap().entries.map((entry) {
+            return BarChartGroupData(
+              x: entry.key,
+              barRods: [
+                BarChartRodData(
+                  toY: entry.value.foodTotal + entry.value.transportTotal,
+                  width: 16,
+                  color: Colors.transparent, // 背景
+                  borderRadius: BorderRadius.circular(4),
+                  rodStackItems: [
+                    BarChartRodStackItem(0, entry.value.foodTotal, colorScheme.secondary),
+                    BarChartRodStackItem(entry.value.foodTotal, 
+                      entry.value.foodTotal + entry.value.transportTotal, colorScheme.tertiary),
+                  ],
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  double _calculateMaxY() {
+    double max = 0;
+    for (var s in data) {
+      if (s.foodTotal + s.transportTotal > max) max = s.foodTotal + s.transportTotal;
+    }
+    return max * 1.2 + 1000;
   }
 }
 

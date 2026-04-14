@@ -165,4 +165,48 @@ class ExpenseService {
       return snapshot.docs.map((doc) => MonthlySummary.fromDoc(doc)).toList();
     });
   }
+
+  /// 全データをCSV形式で取得する（エクスポート用）
+  Future<String> exportDataAsCSV() async {
+    final snapshot = await _expensesRef.orderBy('date', descending: true).get();
+    final buffer = StringBuffer();
+    
+    // ヘッダー
+    buffer.writeln('日付,カテゴリ,金額,メモ');
+    
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final date = (data['date'] as Timestamp).toDate();
+      final dateStr = DateFormat('yyyy/MM/dd HH:mm').format(date);
+      final category = data['category'] == 'food' ? '食費' : '交通費';
+      final amount = data['amount'];
+      final memo = (data['memo'] as String).replaceAll(',', ' '); // CSVとしてのカンマを避ける
+      
+      buffer.writeln('$dateStr,$category,$amount,$memo');
+    }
+    return buffer.toString();
+  }
+
+  /// 本人の全てのデータ（支出、サマリー）を物理削除する
+  Future<void> deleteAllUserData() async {
+    final batch = _db.batch();
+    
+    // 1. expensesの全削除
+    final expenses = await _expensesRef.get();
+    for (var doc in expenses.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    // 2. monthly_summariesの全削除
+    final summaries = await _summariesRef.get();
+    for (var doc in summaries.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    // 3. ユーザー自身のドキュメントも削除（もし情報を持たせていれば）
+    final uid = _auth.currentUser!.uid;
+    batch.delete(_db.collection('users').doc(uid));
+
+    await batch.commit();
+  }
 }

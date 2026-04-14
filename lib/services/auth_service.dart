@@ -26,4 +26,12 @@ class AuthService {
   Future<void> signOut() async {
     await _auth.signOut();
   }
+
+  /// ユーザーアカウントそのものを削除
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.delete();
+    }
+  }
 }
