@@ -159,6 +159,26 @@ class ExpenseService {
     await batch.commit();
   }
 
+  /// 当月より前の詳細支出データ（expenses）のみを全て削除する
+  Future<int> deletePastDetailExpenses() async {
+    final now = DateTime.now();
+    final startOfCurrentMonth = DateTime(now.year, now.month, 1);
+    
+    final snapshot = await _expensesRef
+        .where('date', isLessThan: Timestamp.fromDate(startOfCurrentMonth))
+        .get();
+    
+    if (snapshot.docs.isEmpty) return 0;
+
+    final batch = _db.batch();
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    await batch.commit();
+    return snapshot.docs.length;
+  }
+
   /// 過去の月別サマリーを取得するStream
   Stream<List<MonthlySummary>> getMonthlySummaries() {
     return _summariesRef.orderBy(FieldPath.documentId, descending: true).snapshots().map((snapshot) {

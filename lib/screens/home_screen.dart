@@ -2,7 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/expense_service.dart';
+import '../services/ocr_service.dart';
 import 'entry_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
@@ -127,34 +129,69 @@ class _HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
                     IconButton(
                       icon: const Icon(Icons.camera_alt_outlined),
                       onPressed: () async {
+                        final picker = ImagePicker();
+                        final image = await picker.pickImage(source: ImageSource.camera);
+                        
+                        if (image == null) return;
+
+                        if (!context.mounted) return;
                         showDialog(
                           context: context,
                           barrierDismissible: false,
                           builder: (context) => AlertDialog(
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            title: const Text('レシート読み取り (Beta)'),
+                            title: const Text('レシート解析中'),
                             content: const Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 CircularProgressIndicator(),
                                 SizedBox(height: 16),
-                                Text('AIでレシートを解析しています...\n（※現在はモック動作です）'),
+                                Text('金額を抽出しています...'),
                               ],
                             ),
                           ),
                         );
-                        await Future.delayed(const Duration(seconds: 2));
-                        if (!context.mounted) return;
-                        Navigator.pop(context); // Close dialog
-                        
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('解析結果：認識できませんでした。手入力へ進みます。'),
-                            backgroundColor: colorScheme.error,
-                          ),
-                        );
-                        // EntryScreenへの遷移は+ボタン（手動）と同じ
-                        _handleFabPress(context, fabKey);
+
+                        try {
+                          final bytes = await image.readAsBytes();
+                          final amount = await OCRService().extractAmount(bytes);
+                          
+                          if (!context.mounted) return;
+                          Navigator.pop(context); // Close dialog
+
+                          if (amount != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('金額 ¥$amount を抽出しました。'),
+                                backgroundColor: colorScheme.secondary,
+                              ),
+                            );
+                            // 金額を持ってEntryScreenへ
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => EntryScreen(initialAmount: amount),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('金額を読み取れませんでした。手入力してください。')),
+                            );
+                            _handleFabPress(context, fabKey);
+                          }
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          Navigator.pop(context); // Close dialog
+                          debugPrint('OCR Error: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().contains('APIキー') 
+                                  ? 'APIキーが設定されていません。設定画面から思想を確認してください。'
+                                  : '解析エラーが発生しました。手入力してください。'),
+                              backgroundColor: colorScheme.error,
+                            ),
+                          );
+                          _handleFabPress(context, fabKey);
+                        }
                       },
                       color: colorScheme.onBackground.withOpacity(0.4),
                     ),

@@ -1,12 +1,43 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/expense_service.dart';
 import '../main.dart'; // themeNotifier のためにインポート
 
 /// 設定画面：ユーザー情報表示 + ログアウト
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _autoDelete = false;
+  final String _prefKeyAutoDelete = 'auto_delete_details';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _autoDelete = prefs.getBool(_prefKeyAutoDelete) ?? false;
+    });
+  }
+
+  Future<void> _updateAutoDelete(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefKeyAutoDelete, value);
+    setState(() {
+      _autoDelete = value;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +45,7 @@ class SettingsScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
     final authService = AuthService();
+    final expenseService = ExpenseService();
 
     return Container(
       decoration: BoxDecoration(
@@ -106,193 +138,177 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // 設定メニューリスト
-            _SettingTile(
-              icon: Icons.palette_outlined,
-              title: 'デザイン設定',
-              onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => _ThemeSelectionSheet(),
-                );
-              },
-            ),
-            _SettingTile(
-              icon: Icons.help_outline,
-              title: 'ヘルプ',
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => _HelpDialog(),
-                );
-              },
-            ),
-            _SettingTile(
-              icon: Icons.menu_book_outlined,
-              title: 'SakuTokoの思想（タツミの発信）',
-              onTap: () {
-                // TODO: ここにタツミさんのブログや対話サービス、SNS等のURLを設定
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('タツミの発信サイトへ移動します（準備中）')),
-                );
-              },
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Divider(),
-            ),
-            _SettingSwitch(
-              icon: Icons.auto_delete_outlined,
-              title: '過去データの自動削除',
-              subtitle: '翌月以降の内訳データを自動で軽くします',
-              value: false, // UI only for now
-              onChanged: (bool val) {
-                // TODO: 今後のアップデートで自動削除のロジックと連携
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('自動削除は今後のアップデートで利用可能になります')),
-                );
-              },
-            ),
-            _SettingTile(
-              icon: Icons.delete_sweep_outlined,
-              title: '過去の詳細データを削除',
-              titleColor: Colors.orange,
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('データの削除'),
-                    content: const Text('当月「以外」の過去の詳細データをすべて削除します（合計金額の推移は残ります）。よろしいですか？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('キャンセル'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('削除する', style: TextStyle(color: Colors.orange)),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  // TODO: Firebase Functions等で当月以前のexpensesを一括削除する機能を追加
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('手動削除をリクエストしました（機能実装中）')),
-                  );
-                }
-              },
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Divider(),
-            ),
-            _SettingTile(
-              icon: Icons.logout,
-              title: 'ログアウト',
-              titleColor: Colors.blueGrey,
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('ログアウト'),
-                    content: const Text('ログアウトしてもよろしいですか？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('キャンセル'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('ログアウト', style: TextStyle(color: Colors.blueGrey)),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  await authService.signOut();
-                }
-              },
-            ),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Divider(),
-            ),
-
-            _SettingTile(
-              icon: Icons.file_download_outlined,
-              title: 'データをCSVで出力',
-              onTap: () async {
-                final csvData = await ExpenseService().exportDataAsCSV();
-                // ※ Web版での実録ダウンロード処理（デモ表示）
-                if (context.mounted) {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('CSVデータの出力'),
-                      content: const SingleChildScrollView(
-                        child: Text('データのエクスポート準備が完了しました。本来はここでファイルがダウンロードされます。'),
-                      ),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('閉じる')),
-                        TextButton(
-                          onPressed: () {
-                            print(csvData); // コンソール出力
-                            Navigator.pop(context);
-                          },
-                          child: const Text('内容をコンソールに出力'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              },
-            ),
-
-            _SettingTile(
-              icon: Icons.person_off_outlined,
-              title: '退会して全データを削除',
-              titleColor: Colors.redAccent,
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('アカウントの削除'),
-                    content: const Text('すべての記録（支出・集計）を完全に消去し、アカウントを削除します。この操作は取り消せません。本当によろしいですか？'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('退会する', style: TextStyle(color: Colors.redAccent)),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  try {
-                    // 1. Firestoreデータを先に削除
-                    await ExpenseService().deleteAllUserData();
-                    // 2. Authアカウントを削除（自動的にログアウトされる）
-                    await authService.deleteAccount();
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('退会処理中にエラーが発生しました: $e')),
+            Expanded(
+              child: ListView(
+                children: [
+                  _SettingTile(
+                    icon: Icons.palette_outlined,
+                    title: 'デザイン設定',
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => _ThemeSelectionSheet(),
                       );
-                    }
-                  }
-                }
-              },
-            ),
+                    },
+                  ),
+                  _SettingTile(
+                    icon: Icons.help_outline,
+                    title: 'ヘルプ',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => _HelpDialog(),
+                      );
+                    },
+                  ),
+                  _SettingTile(
+                    icon: Icons.menu_book_outlined,
+                    title: 'SakuTokoの思想（タツミの発信）',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('タツミの発信サイトへ移動します（準備中）')),
+                      );
+                    },
+                  ),
+                  
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Divider(),
+                  ),
 
-            const Spacer(),
+                  _SettingSwitch(
+                    icon: Icons.auto_delete_outlined,
+                    title: '過去データの自動削除',
+                    subtitle: '毎月、前月以前の内訳データを自動的に整理します',
+                    value: _autoDelete,
+                    onChanged: (bool val) => _updateAutoDelete(val),
+                  ),
+                  _SettingTile(
+                    icon: Icons.delete_sweep_outlined,
+                    title: '過去の詳細データを今すぐ削除',
+                    titleColor: Colors.orange,
+                    onTap: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('データの整理'),
+                          content: const Text('今月「以外」の過去のすべての詳細記録（明細）を削除します。月別合計金額はアーカイブに残ります。'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('キャンセル'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('今すぐ整理する', style: TextStyle(color: Colors.orange)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        final count = await expenseService.deletePastDetailExpenses();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('過去の明細 $count 件を削除し、軽量化しました')),
+                          );
+                        }
+                      }
+                    },
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Divider(),
+                  ),
+
+                  _SettingTile(
+                    icon: Icons.file_download_outlined,
+                    title: 'データをCSVで出力',
+                    onTap: () async {
+                      final csvData = await expenseService.exportDataAsCSV();
+                      if (mounted) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('CSVデータの出力'),
+                            content: const Text('エクスポート準備が完了しました。'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('閉じる')),
+                              TextButton(
+                                onPressed: () {
+                                  debugPrint(csvData);
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('コンソールに出力'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  _SettingTile(
+                    icon: Icons.logout,
+                    title: 'ログアウト',
+                    titleColor: Colors.blueGrey,
+                    onTap: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('ログアウト'),
+                          content: const Text('ログアウトしてもよろしいですか？'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('キャンセル'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('ログアウト', style: TextStyle(color: Colors.blueGrey)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await authService.signOut();
+                      }
+                    },
+                  ),
+                  _SettingTile(
+                    icon: Icons.person_off_outlined,
+                    title: '退会して全データを削除',
+                    titleColor: Colors.redAccent,
+                    onTap: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('退会'),
+                          content: const Text('すべての記録を削除し、アカウントを抹消します。本当によろしいですか？'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('退会する', style: TextStyle(color: Colors.redAccent)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await expenseService.deleteAllUserData();
+                        await authService.deleteAccount();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
             
             // バージョン情報
             Padding(
               padding: const EdgeInsets.only(bottom: 24),
               child: Text(
-                'Version 1.2.0 (Phase 7)',
+                'Version 1.3.0 (Phase 8)',
                 style: TextStyle(
                   fontSize: 12,
                   color: colorScheme.onBackground.withOpacity(0.3),

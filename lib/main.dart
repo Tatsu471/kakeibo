@@ -25,6 +25,19 @@ void main() async {
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
 
+  // 自動削除の実行（ログイン済みの場合）
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    final prefs = await SharedPreferences.getInstance();
+    final autoDelete = prefs.getBool('auto_delete_details') ?? false;
+    if (autoDelete) {
+      // 非同期で実行（起動を妨げない）
+      ExpenseService().deletePastDetailExpenses().then((count) {
+        if (count > 0) debugPrint('Auto-cleaned $count past details.');
+      });
+    }
+  }
+
   runApp(const KakeiboApp());
 }
 

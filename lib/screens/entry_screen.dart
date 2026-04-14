@@ -6,7 +6,10 @@ import '../services/expense_service.dart';
 
 /// 記録入力画面：タブ切り替え + 独自電卓キーパッド
 class EntryScreen extends StatefulWidget {
-  const EntryScreen({super.key});
+  final Expense? expense; // 編集モードの場合
+  final int? initialAmount; // OCR等からの初期値用
+
+  const EntryScreen({super.key, this.expense, this.initialAmount});
 
   @override
   State<EntryScreen> createState() => _EntryScreenState();
@@ -25,6 +28,9 @@ class _EntryScreenState extends State<EntryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    if (widget.initialAmount != null) {
+      _displayValue = widget.initialAmount.toString();
+    }
   }
 
   @override
