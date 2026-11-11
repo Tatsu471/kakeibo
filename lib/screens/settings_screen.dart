@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/expense_service.dart';
 import '../main.dart'; // themeNotifier のためにインポート
@@ -165,10 +166,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SettingTile(
                     icon: Icons.menu_book_outlined,
                     title: 'SakuTokoの思想（タツミの発信）',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('タツミの発信サイトへ移動します（準備中）')),
-                      );
+                    onTap: () async {
+                      final uri = Uri.parse('https://webtriacorp.com');
+                      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('リンクを開けませんでした')),
+                          );
+                        }
+                      }
                     },
                   ),
                   
